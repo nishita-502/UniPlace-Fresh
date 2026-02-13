@@ -9,6 +9,8 @@ import {
   Trophy,
   FileText,
   BookOpen,
+  FilePlus,
+  List,
 } from "lucide-react";
 
 const navItems = [
@@ -21,6 +23,8 @@ const navItems = [
   { to: "/competitions", icon: Trophy, label: "Competitions" },
   { to: "/resume", icon: FileText, label: "Resume" },
   { to: "/senior-blogs", icon: BookOpen, label: "Senior Blogs" },
+  { to: "/add-blog", icon: FilePlus, label: "Add Blog" },
+  { to: "/my-blogs", icon: List, label: "My Blogs" },
 ];
 
 export function Sidebar() {

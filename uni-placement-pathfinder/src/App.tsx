@@ -14,6 +14,8 @@ import Resume from "./pages/Resume";
 import SeniorBlogs from "./pages/SeniorBlogs";
 import NotFound from "./pages/NotFound";
 import BlogPost from "./pages/BlogPost";
+import AddBlog from "./pages/AddBlog";
+import MyBlogs from "./pages/MyBlogs";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +42,8 @@ const App = () => (
 
           <Route path="/senior-blogs" element={<SeniorBlogs />} />
           <Route path="/senior-blogs/:id" element={<BlogPost />} />
+          <Route path="/add-blog" element={<AddBlog />} />
+          <Route path="/my-blogs" element={<MyBlogs />} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>

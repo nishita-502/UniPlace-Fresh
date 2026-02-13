@@ -1,39 +1,98 @@
-import { useState } from "react";
-import { mockBlogs } from "@/data/mockData";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Eye, Check, X, Pencil } from "lucide-react";
+import { Eye, Check, X, Pencil, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase";
 
 export default function BlogsApproval() {
-  const [blogs, setBlogs] = useState(mockBlogs);
-  const [selectedBlog, setSelectedBlog] = useState<typeof mockBlogs[0] | null>(null);
+  const [blogs, setBlogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedBlog, setSelectedBlog] = useState<any | null>(null);
   const [editDialog, setEditDialog] = useState(false);
   const [editContent, setEditContent] = useState("");
   const [editTitle, setEditTitle] = useState("");
+  const [rejectDialog, setRejectDialog] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
   const { toast } = useToast();
 
-  const updateStatus = (id: string, status: "Approved" | "Rejected") => {
-    setBlogs(prev => prev.map(b => b.id === id ? { ...b, status } : b));
-    toast({ title: `Blog ${status.toLowerCase()}` });
+  const fetchPending = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("blogs")
+      .select("*")
+      .in("status", ["pending"])
+      .order("created_at", { ascending: false });
+    if (error) {
+      toast({ variant: "destructive", title: "Error fetching blogs", description: error.message });
+      setBlogs([]);
+    } else {
+      setBlogs(data || []);
+    }
+    setLoading(false);
   };
 
-  const handleEdit = (blog: typeof mockBlogs[0]) => {
+  useEffect(() => {
+    fetchPending();
+  }, []);
+
+  const approve = async (id: string) => {
+    const { error } = await supabase.from("blogs").update({ status: "approved", rejection_reason: null }).eq("id", id);
+    if (error) {
+      toast({ variant: "destructive", title: "Approve failed", description: error.message });
+    } else {
+      toast({ title: "Blog approved" });
+      fetchPending();
+    }
+  };
+
+  const openReject = (blog: any) => {
+    setSelectedBlog(blog);
+    setRejectReason("");
+    setRejectDialog(true);
+  };
+
+  const reject = async () => {
+    if (!selectedBlog) return;
+    const { error } = await supabase
+      .from("blogs")
+      .update({ status: "rejected", rejection_reason: rejectReason || null })
+      .eq("id", selectedBlog.id);
+    if (error) {
+      toast({ variant: "destructive", title: "Reject failed", description: error.message });
+    } else {
+      toast({ title: "Blog rejected" });
+      setRejectDialog(false);
+      setSelectedBlog(null);
+      fetchPending();
+    }
+  };
+
+  const handleEdit = (blog: any) => {
     setEditTitle(blog.title);
-    setEditContent(blog.content);
+    setEditContent(blog.content_html || "");
     setSelectedBlog(blog);
     setEditDialog(true);
   };
 
   const handleSaveEdit = () => {
-    if (selectedBlog) {
-      setBlogs(prev => prev.map(b => b.id === selectedBlog.id ? { ...b, title: editTitle, content: editContent } : b));
-      toast({ title: "Blog updated" });
-      setEditDialog(false);
-    }
+    if (!selectedBlog) return;
+    supabase
+      .from("blogs")
+      .update({ title: editTitle, content_html: editContent })
+      .eq("id", selectedBlog.id)
+      .then(({ error }) => {
+        if (error) {
+          toast({ variant: "destructive", title: "Update failed", description: error.message });
+        } else {
+          toast({ title: "Blog updated" });
+          setEditDialog(false);
+          fetchPending();
+        }
+      });
   };
 
   return (
@@ -45,30 +104,39 @@ export default function BlogsApproval() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-border">
-              {["Title", "Author", "Company", "Status", "Actions"].map(h => (
+              {["Title", "Author", "Submitted", "Actions"].map(h => (
                 <th key={h} className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {blogs.map(b => (
+            {loading ? (
+              <tr>
+                <td colSpan={4} className="text-center py-10">
+                  <Loader2 className="w-6 h-6 animate-spin mx-auto" />
+                </td>
+              </tr>
+            ) : blogs.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="text-center py-10 text-muted-foreground">No pending blogs.</td>
+              </tr>
+            ) : (
+              blogs.map(b => (
               <tr key={b.id} className="border-b border-border last:border-0 hover:bg-muted/50">
                 <td className="px-4 py-3 text-sm font-medium text-foreground">{b.title}</td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">{b.author}</td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">{b.company}</td>
-                <td className="px-4 py-3">
-                  <span className={b.status === "Approved" ? "badge-approved" : b.status === "Rejected" ? "badge-rejected" : "badge-pending"}>{b.status}</span>
-                </td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">{b.author_name}</td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(b.created_at).toLocaleString()}</td>
                 <td className="px-4 py-3">
                   <div className="flex gap-1">
                     <button onClick={() => { setSelectedBlog(b); }} className="p-1.5 rounded hover:bg-muted"><Eye className="w-4 h-4 text-muted-foreground" /></button>
                     <button onClick={() => handleEdit(b)} className="p-1.5 rounded hover:bg-muted"><Pencil className="w-4 h-4 text-muted-foreground" /></button>
-                    <button onClick={() => updateStatus(b.id, "Approved")} className="p-1.5 rounded hover:bg-primary/10"><Check className="w-4 h-4 text-primary" /></button>
-                    <button onClick={() => updateStatus(b.id, "Rejected")} className="p-1.5 rounded hover:bg-destructive/10"><X className="w-4 h-4 text-destructive" /></button>
+                    <button onClick={() => approve(b.id)} className="p-1.5 rounded hover:bg-primary/10"><Check className="w-4 h-4 text-primary" /></button>
+                    <button onClick={() => openReject(b)} className="p-1.5 rounded hover:bg-destructive/10"><X className="w-4 h-4 text-destructive" /></button>
                   </div>
                 </td>
               </tr>
-            ))}
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -78,9 +146,26 @@ export default function BlogsApproval() {
         <DialogContent>
           <DialogHeader><DialogTitle>{selectedBlog?.title}</DialogTitle></DialogHeader>
           <div className="space-y-2 mt-2">
-            <p className="text-sm text-muted-foreground">By {selectedBlog?.author} • {selectedBlog?.company} • {selectedBlog?.readTime} read</p>
-            <div className="flex gap-2">{selectedBlog?.tags.map(t => <span key={t} className="badge-active">{t}</span>)}</div>
-            <p className="text-sm text-foreground mt-4">{selectedBlog?.content}</p>
+            <p className="text-sm text-muted-foreground">By {selectedBlog?.author_name}</p>
+            {selectedBlog?.cover_image_url ? (
+              <img src={selectedBlog.cover_image_url} alt="" className="w-full max-h-64 object-cover rounded-md" />
+            ) : null}
+            <div className="prose prose-sm dark:prose-invert mt-4" dangerouslySetInnerHTML={{ __html: selectedBlog?.content_html || "" }} />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Dialog */}
+      <Dialog open={rejectDialog} onOpenChange={setRejectDialog}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Reject Blog</DialogTitle></DialogHeader>
+          <div className="space-y-4 mt-2">
+            <Label>Reason (optional)</Label>
+            <Textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} className="min-h-[120px]" />
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setRejectDialog(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={reject}>Reject</Button>
           </div>
         </DialogContent>
       </Dialog>
