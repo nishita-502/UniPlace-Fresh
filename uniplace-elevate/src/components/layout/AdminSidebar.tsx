@@ -1,10 +1,9 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Building2,
   Briefcase,
   Trophy,
-  GraduationCap,
   Users,
   Calendar,
   Code2,
@@ -12,61 +11,80 @@ import {
   Mail,
   BarChart3,
   Settings,
+  LogOut,
+  GraduationCap
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
-const navItems = [
-  { title: "Dashboard", path: "/", icon: LayoutDashboard },
-  { title: "Companies", path: "/companies", icon: Building2 },
-  { title: "Job Postings", path: "/job-postings", icon: Briefcase },
-  { title: "Results", path: "/results", icon: Trophy },
-  { title: "Students Database", path: "/students", icon: GraduationCap },
-  { title: "Companies & POC", path: "/companies-poc", icon: Users },
-  { title: "Events", path: "/events", icon: Calendar },
-  { title: "Hackathons", path: "/hackathons", icon: Code2 },
-  { title: "Blogs Approval", path: "/blogs", icon: FileText },
-  { title: "Email Center", path: "/email", icon: Mail },
-  { title: "Reports & Exports", path: "/reports", icon: BarChart3 },
-  { title: "Settings", path: "/settings", icon: Settings },
+const menuItems = [
+  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+  { icon: Building2, label: "Companies", path: "/companies" },
+  { icon: Briefcase, label: "Job Postings", path: "/job-postings" },
+  { icon: Trophy, label: "Results", path: "/results" },
+  { icon: Users, label: "Students Database", path: "/students" },
+  { icon: Calendar, label: "Events", path: "/events" },
+  { icon: Code2, label: "Hackathons", path: "/hackathons" },
+  { icon: FileText, label: "Blogs Approval", path: "/blogs" },
+  { icon: Mail, label: "Email Center", path: "/email" },
+  { icon: BarChart3, label: "Reports & Exports", path: "/reports" },
+  { icon: Settings, label: "Settings", path: "/settings" },
 ];
 
+// FIX: Changed from 'export default function' to 'export function'
 export function AdminSidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/login");
+  };
 
   return (
-    <aside className="w-60 min-h-screen bg-sidebar flex flex-col flex-shrink-0">
-      {/* Logo */}
-      <div className="px-5 py-5 flex items-center gap-2">
-        <div className="w-8 h-8 rounded-full bg-sidebar-primary flex items-center justify-center">
-          <GraduationCap className="w-5 h-5 text-sidebar-primary-foreground" />
+    <div className="w-64 bg-[#113a2f] text-white p-4 flex flex-col h-screen">
+      <div className="flex items-center gap-3 px-2 mb-8 mt-2">
+        <div className="bg-white/20 p-1.5 rounded-lg backdrop-blur-sm">
+          <GraduationCap className="w-6 h-6" />
         </div>
-        <span className="text-lg font-bold text-sidebar-primary-foreground">UniPlace</span>
+        <h1 className="text-xl font-bold tracking-tight">UniPlace</h1>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-2 space-y-1">
-        {navItems.map((item) => {
+      <nav className="space-y-1 flex-1 overflow-y-auto">
+        {menuItems.map((item) => {
+          const Icon = item.icon;
           const isActive = location.pathname === item.path;
           return (
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-sm font-medium",
                 isActive
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              }`}
+                  ? "bg-[#25cba1] text-[#0d2e25] shadow-md translate-x-1"
+                  : "text-gray-300 hover:bg-white/10 hover:text-white"
+              )}
             >
-              <item.icon className="w-4 h-4 flex-shrink-0" />
-              <span>{item.title}</span>
+              <Icon className={cn("w-5 h-5", isActive ? "text-[#0d2e25]" : "text-gray-400")} />
+              {item.label}
             </Link>
           );
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="px-5 py-4 text-xs text-sidebar-foreground/50">
-        © 2026 UniPlace
+      {/* Logout Button */}
+      <div className="pt-4 mt-4 border-t border-white/10">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-3 py-2.5 w-full text-left rounded-md text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-all text-sm font-medium"
+        >
+          <LogOut className="w-5 h-5" />
+          Logout
+        </button>
+        <div className="mt-4 px-3 text-xs text-gray-500">
+          © 2026 UniPlace
+        </div>
       </div>
-    </aside>
+    </div>
   );
 }
